@@ -7,8 +7,15 @@ import { useEffect } from 'react'
 
 const SessionProvider = () => {
     const router = useRouter()
-
-    const session = JSON.parse(localStorage.getItem('session')!)
+    let session: any = null
+    if (typeof window === 'undefined') {
+        session = {
+            user: null,
+            expDateTime: null
+        }
+    } else {
+        session = JSON.parse(localStorage.getItem('session')!)
+    }
 
     const isExpired = (expDateTime: string) => {
         const now = new Date()
@@ -31,6 +38,13 @@ const SessionProvider = () => {
             pathname === '/sign-in'
         ) {
             router.back()
+        }
+
+        if (session && !isExpired(session.expDateTime)) {
+            useSessionStore.setState({
+                user: session.user,
+                expDateTime: session.expDateTime
+            })
         }
     }, [session, router, pathname])
     return null
