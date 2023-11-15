@@ -4,12 +4,14 @@ import { Card } from '@/components/ui/card'
 import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { rupiahFormat } from '@/lib/utils'
-import { Product } from '@prisma/client'
+import useSessionStore from '@/store/sessions'
+import { Product, User } from '@prisma/client'
 import axios from 'axios'
 import { Edit, MinusCircle, PlusCircle, Trash } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { use, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-
+import Print from './_components/print'
 interface optProduk {
     label: string
     value: string
@@ -26,12 +28,31 @@ interface itemTransaksi {
 
 interface dataTransaksi {
     id: number
-    idUser: number
+    userId: number
     total: number
     produk: itemTransaksi[]
 }
 
+interface TransaksiProps {
+    id: number
+    userId: number
+    total: number
+    user: User
+    createdAt: Date
+    TransactionDetail: [
+        {
+            id: number
+            qty: number
+            price: number
+            subTotal: number
+            discount: number
+            product: Product
+        }
+    ]
+}
+
 const KasirPage = () => {
+    const router = useRouter()
     const [optProduk, setOptProduk] = useState<optProduk[]>([])
     const [dataProduk, setDataProduk] = useState([])
     const [selectedProduk, setSelectedProduk] = useState(undefined)
@@ -45,30 +66,45 @@ const KasirPage = () => {
         discount: 0,
         subtotal: 0
     })
+    const [addTrx, setAddTrx] = useState<TransaksiProps>()
+    const [isPrint, setIsPrint] = useState(false)
+    const [trxId, setTrxId] = useState(0)
 
     const [dataTransaksi, setDataTransaksi] = useState<dataTransaksi>({
         id: 0,
-        idUser: 0,
+        userId: localStorage.getItem('session')
+            ? Number(JSON.parse(localStorage.getItem('session')!).user.id)
+            : 0,
         total: 0,
         produk: []
     })
 
-    useEffect(() => {
-        const getProduk = async () => {
-            try {
-                const res = await axios.get('/api/produk')
-                setDataProduk(res.data)
-                setOptProduk(
-                    res.data.map((item: any) => ({
-                        label: `${item.id} - ${item.name}`,
-                        value: item.id
-                    }))
-                )
-            } catch (error) {
-                toast.error('Gagal mengambil data produk')
-            }
+    const getProduk = async () => {
+        try {
+            const res = await axios.get('/api/produk')
+            setDataProduk(res.data)
+            setOptProduk(
+                res.data.map((item: any) => ({
+                    label: `${item.id} - ${item.name}`,
+                    value: item.id
+                }))
+            )
+        } catch (error) {
+            toast.error('Gagal mengambil data produk')
         }
+    }
+    const getLastTransaksi = async () => {
+        try {
+            const res = await axios.get('/api/transaksi/getlatest')
+            setTrxId(res.data.id + 1)
+            console.log(res.data)
+        } catch (error) {
+            toast.error('Gagal mengambil data transaksi')
+        }
+    }
+    useEffect(() => {
         getProduk()
+        getLastTransaksi()
     }, [])
 
     const handleChangeProduk = (e: any) => {
@@ -154,13 +190,25 @@ const KasirPage = () => {
                 total: dataTransaksi.total + dataForm.subtotal,
                 produk: newProduk
             })
+            toast.success('Produk berhasil ditambahkan')
         } else {
             setDataTransaksi({
                 ...dataTransaksi,
                 total: dataTransaksi.total + dataForm.subtotal,
                 produk: [...dataTransaksi.produk, dataForm]
             })
+            toast.success('Produk berhasil ditambahkan')
         }
+
+        setSelectedProduk(undefined)
+        setDataForm({
+            idProduk: 0,
+            name: '',
+            price: 0,
+            qty: 0,
+            discount: 0,
+            subtotal: 0
+        })
     }
 
     const handleChangeBayar = (e: any) => {
@@ -193,9 +241,91 @@ const KasirPage = () => {
         toast.success('Produk berhasil dihapus')
     }
 
+    const editQtyChange = (qty: number, id: number) => {
+        const value = Number(qty)
+
+        if (isNaN(value)) {
+            return
+        }
+        if (value < 1) {
+            const confirm = window.confirm('Yakin ingin menghapus produk?')
+
+            if (!confirm) return
+            const newProduk = dataTransaksi.produk.filter(
+                (item: itemTransaksi) => item.idProduk !== id
+            )
+            setDataTransaksi({
+                ...dataTransaksi,
+                produk: newProduk
+            })
+            return
+        }
+        const newProduk = dataTransaksi.produk.map((item: itemTransaksi) => {
+            if (item.idProduk === id) {
+                return {
+                    ...item,
+                    qty: value,
+                    subtotal: item.price * value - item.discount
+                }
+            }
+            return item
+        })
+        const newTotal = newProduk.reduce(
+            (acc: number, item: itemTransaksi) => acc + item.subtotal,
+            0
+        )
+        setDataTransaksi({
+            ...dataTransaksi,
+            total: newTotal,
+            produk: newProduk
+        })
+    }
+
+    const handleBayar = async () => {
+        toast.loading('Loading...')
+        if (bayar < dataTransaksi.total) {
+            toast.dismiss()
+            return toast.error('Uang bayar kurang')
+        }
+        if (dataTransaksi.produk.length === 0) {
+            toast.dismiss()
+            return toast.error('Tambahkan produk terlebih dahulu')
+        }
+        try {
+            const res = await axios.post('/api/transaksi', dataTransaksi)
+
+            console.debug(res.data)
+            toast.dismiss()
+            setAddTrx(res.data)
+            setIsPrint(true)
+        } catch (error) {
+            toast.dismiss()
+            toast.error('Transaksi gagal')
+        }
+    }
+
+    const onPrintClosed = () => {
+        setIsPrint(false)
+        setAddTrx(undefined)
+        toast.success('Transaksi berhasil')
+        setBayar(0)
+        setKembalian(0)
+        setDataTransaksi({
+            ...dataTransaksi,
+            id: 0,
+            total: 0,
+            produk: []
+        })
+        getLastTransaksi()
+        router.refresh()
+    }
+
     return (
         <div className='p-6'>
             <h1 className='text-2xl font-bold mb-5'>FORM TRANSAKSI</h1>
+            {isPrint && (
+                <Print dataTransaksi={addTrx!} onClose={onPrintClosed} tunai={bayar} kembali={kembalian}/>
+            )}
             <div className='grid grid-cols-[3fr_minmax(400px,_1fr)] gap-3'>
                 <div className='h-10'>
                     <Card className='p-3'>
@@ -302,7 +432,7 @@ const KasirPage = () => {
                         <div className='flex gap-3 items-center my-5'>
                             <h1>Kode Transaksi</h1>
                             <div className='text-blue-700 bg-blue-200 px-3 py-1 rounded-sm text-sm font-bold'>
-                                TRX1
+                                TRX{trxId}
                             </div>
                         </div>
                         <div className='border border-zinc-100 rounded-md mb-2 text-xs p-3 py-1 grid grid-cols-5 items-center'>
@@ -326,14 +456,30 @@ const KasirPage = () => {
                                     </div>
                                 </div>
                                 <div className='flex gap-2 items-center'>
-                                    <Button size='icon' variant='secondary'>
+                                    <Button
+                                        size='icon'
+                                        variant='secondary'
+                                        onClick={() => {
+                                            editQtyChange(
+                                                item.qty - 1,
+                                                item.idProduk
+                                            )
+                                        }}>
                                         <MinusCircle className='h-4 w-4' />
                                     </Button>
                                     <Input
                                         className='max-w-[50px] text-center'
                                         value={item.qty}
                                     />
-                                    <Button size='icon' variant='secondary'>
+                                    <Button
+                                        size='icon'
+                                        variant='secondary'
+                                        onClick={() => {
+                                            editQtyChange(
+                                                item.qty + 1,
+                                                item.idProduk
+                                            )
+                                        }}>
                                         <PlusCircle className='h-4 w-4' />
                                     </Button>
                                 </div>
@@ -345,9 +491,6 @@ const KasirPage = () => {
                                 </div>
 
                                 <div className='flex gap-3 items-center'>
-                                    <Button size='icon' variant='secondary'>
-                                        <Edit className='h-4 w-4' />
-                                    </Button>
                                     <Button
                                         size='icon'
                                         variant='destructive'
@@ -385,7 +528,13 @@ const KasirPage = () => {
                                 value={kembalian}
                             />
                         </div>
-                        <Button className='w-full mt-3'>Bayar</Button>
+                        <Button
+                            className='w-full mt-3'
+                            onClick={() => {
+                                handleBayar()
+                            }}>
+                            Bayar
+                        </Button>
                     </Card>
                 </div>
             </div>

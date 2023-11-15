@@ -14,7 +14,8 @@ import {
     Box,
     Boxes,
     FileBoxIcon,
-    ListChecks
+    ListChecks,
+    ClipboardList 
 } from 'lucide-react'
 import { SidebarItem } from './sidebar-item'
 import { usePathname, useRouter } from 'next/navigation'
@@ -29,6 +30,11 @@ const adminRoutes = [
         icon: Calculator,
         label: 'Kasir',
         href: '/kasir'
+    },
+    {
+        icon: ClipboardList,
+        label: 'Transaksi',
+        href: '/transaksi'
     },
     {
         icon: Coffee,
