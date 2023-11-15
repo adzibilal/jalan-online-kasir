@@ -45,7 +45,7 @@ const Transaksi = () => {
             <div className='grid grid-cols-3 gap-3 max-lg:grid-cols-2 max-md:grid-cols-1'>
                 {transaksi &&
                     transaksi.map(trx => (
-                        <Card className='p-3 border-dashed mb-2' key={trx.id}>
+                        <Card className='p-3 border-dashed mb-2 h-max' key={trx.id}>
                             <div className='flex gap-3 items-center justify-between'>
                                 <div className='text-sm'>ID TRANSAKSI</div>
                                 <div className='bg-blue-300 text-blue-700 px-3 text-sm py-1 font-bold rounded-sm'>

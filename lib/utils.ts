@@ -19,20 +19,19 @@ export function dateFormat(inputDate: Date | null) {
     // Parse the input date string into a Date object
     const parsedDate = new Date(inputDate)
 
-    // Define the months in your desired language (e.g., German)
     const months = [
-        'Januar',
-        'Februar',
-        'März',
+        'Januari',
+        'Februari',
+        'Maret',
         'April',
-        'Mai',
+        'Mei',
         'Juni',
         'Juli',
-        'August',
+        'Agustus',
         'September',
         'Oktober',
         'November',
-        'Dezember'
+        'Desember'
     ]
 
     // Extract day, month, year, hours, and minutes
@@ -48,4 +47,10 @@ export function dateFormat(inputDate: Date | null) {
         .padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
 
     return outputDate
+}
+//date format
+export function simpleDateFormat(inputDate: Date | null) {
+    if (!inputDate) return '-'    
+
+    return inputDate.toLocaleDateString('id-ID')
 }
