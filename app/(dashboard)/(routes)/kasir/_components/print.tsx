@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { dateFormat, rupiahFormat } from '@/lib/utils'
 import { Product, TransactionDetail, User } from '@prisma/client'
 import React from 'react'
-import generatePDF, { Resolution, Margin, Options } from 'react-to-pdf'
+import generatePDF, { Resolution, Margin, Options, usePDF } from 'react-to-pdf'
 
 interface TransaksiProps {
     id: number
@@ -41,7 +41,7 @@ const Print = ({ dataTransaksi, onClose, tunai, kembali }: PrintProps) => {
         resolution: Resolution.HIGH,
         page: {
             margin: Margin.NONE,
-            format: 'a5'
+            format: [58,30]
         },
         overrides: {
             pdf: {
