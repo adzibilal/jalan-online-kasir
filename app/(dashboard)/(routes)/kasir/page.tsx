@@ -70,11 +70,22 @@ const KasirPage = () => {
     const [isPrint, setIsPrint] = useState(false)
     const [trxId, setTrxId] = useState(0)
 
+    const getUserId = () => {
+        if (
+            typeof window !== 'undefined' &&
+            typeof window.localStorage !== 'undefined'
+        ) {
+            return localStorage.getItem('session')
+                ? Number(JSON.parse(localStorage.getItem('session')!).user.id)
+                : 0
+        } else {
+            return 0
+        }
+    }
+    
     const [dataTransaksi, setDataTransaksi] = useState<dataTransaksi>({
         id: 0,
-        userId: localStorage.getItem('session')
-            ? Number(JSON.parse(localStorage.getItem('session')!).user.id)
-            : 0,
+        userId: getUserId(),
         total: 0,
         produk: []
     })
@@ -324,7 +335,12 @@ const KasirPage = () => {
         <div className='p-6'>
             <h1 className='text-2xl font-bold mb-5'>FORM TRANSAKSI</h1>
             {isPrint && (
-                <Print dataTransaksi={addTrx!} onClose={onPrintClosed} tunai={bayar} kembali={kembalian}/>
+                <Print
+                    dataTransaksi={addTrx!}
+                    onClose={onPrintClosed}
+                    tunai={bayar}
+                    kembali={kembalian}
+                />
             )}
             <div className='grid grid-cols-[3fr_minmax(400px,_1fr)] gap-3'>
                 <div className='h-10'>
